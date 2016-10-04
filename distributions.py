@@ -7,6 +7,42 @@ import scipy.stats
 from statsmodels.distributions import ECDF
 
 
+class EmpiricalDistribution:
+    """
+    Generates empirical distribution. Mimics scipy.stats distributions behaviour.
+
+    Usage:
+
+    sample = np.random.binomial(2, 0.4, size=1000)
+    vals, freqs = np.unique(sample, return_counts=True)
+    empirical = EmpiricalDistribution(vals, freqs/np.sum(freqs))
+    print(empirical.rvs(10)) # [ 1.  1.  0.  0.  0.  1.  1.  0.  1.  2.]
+
+    """
+    def __init__(self, vals, probs, loc=0., scale=1.):
+        """
+        Creates random number generator form.
+
+        :param vals: values in sample
+        :param probs: frequencies of observed values
+        :param loc: location parameter
+        :param scale: scale parameter
+        """
+        self.__vals = vals
+        self.__probs = probs
+        self.__loc = loc
+        self.__scale = scale
+
+    def rvs(self, size=1):
+        """
+        Generates random sample.
+
+        :param size: shape of sample to generate
+        :return: np.ndarray
+        """
+        return np.random.choice(self.__vals, size=size, replace=True, p=self.__probs)/self.__scale + self.__loc
+
+
 class ContinuousDistributionFitter:
     """"
     Class for choosing fitting a continuous distributions (available in scipy.stats) into data.
@@ -43,6 +79,8 @@ class ContinuousDistributionFitter:
         :return: list of tuples of the form
                 (<scipy.stats distribution name>, <scipy.stats distribution object>, <fitted params>, <criterion value>)
                 sorted in order starting from the best distribution
+
+        Note: Usually generates numerical warnings when distribution isn't likely to fit the sample.
         """
 
         self.__fit_distributions(x)
@@ -131,8 +169,26 @@ class ContinuousDistributionFitter:
 class plot_fit:
     """
     Helper class for visualising accuracy of results obtained by ContinuousDistributionFitter.
+
+    Usage:
+
+    sample = np.random.normal(size=10000)
+    fitter = ContinuousDistributionFitter()
+    results = fitter.fit(sample, criterion='BIC', n_best=3)
+    plot_fit(sample, results) # generates chart
+
+
+    Note: Tested only in 1080p resolution.
     """
     def __init__(self, data, distributions, bins=None, title=None):
+        """
+        Visualises accuracy of results obtained by ContinuousDistributionFitter.
+
+        :param data: (iterable) empirical sample
+        :param distributions: output from ContinuousDistributtionFitter.fit method
+        :param bins: (optional) number of bins for histogram
+        :param title: (optional) title for figure
+        """
         self.__data = data
         self.__distributions = distributions
         self.__bins = bins
@@ -194,24 +250,7 @@ class plot_fit:
         self.__cdf_plot.legend(loc=4)
 
     def __get_ranges(self):
-        __min_data, __max_data = np.min(self.__data), np.max(self.__data)
-        __rng = __max_data - __min_data
-        __l_end, __r_end = __min_data - 0.1*__rng, __max_data + 0.1*__rng
-        return __rng, np.linspace(__l_end, __r_end, 500)
-
-
-class Bootstrap:
-    def __init__(self, vals, probs, loc=0., scale=1.):
-        self.__vals = vals
-        self.__probs = probs
-        self.__loc = loc
-        self.__scale = scale
-
-    def rvs(self, size=1):
-        return np.random.choice(self.__vals, size=size, replace=True, p=self.__probs)/self.__scale + self.__loc
-
-
-if __name__ == '__main__':
-    x = np.random.normal(size=10000)
-    fitter = ContinuousDistributionFitter()
-    print(fitter.fit(x, criterion='BIC', n_best=1)) # [('norm', <scipy.stats._continuous_distns.norm_gen object at 0x0000000007F77C88>, (0.0095883702145322935, 0.99449724228777148), 28283.156517594962)]
+        min_data, max_data = np.min(self.__data), np.max(self.__data)
+        rng = max_data - min_data
+        l_end, r_end = min_data - 0.1*rng, max_data + 0.1*rng
+        return rng, np.linspace(l_end, r_end, 500)
