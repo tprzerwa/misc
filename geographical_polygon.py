@@ -1,6 +1,31 @@
 import numpy as np
 
 
+def transform_coordinates(latitude, longitude):
+    """
+    Transforms geographical coordinates to spherical coordinates in radians.
+
+    :param latitude: float
+    :param longitude: float
+    :return: float [0, pi/2), float (-pi, pi]
+    """
+    scale = np.pi/180.
+    return 0.5*(0.5*np.pi + latitude*scale), longitude*scale
+
+
+def coordinates_to_complex(latitude, longitude):
+    """
+    Maps geographical coordinates (all apart the north pole) to complex plane.
+
+    :param latitude: float
+    :param longitude: float
+    :return: complex or np.array of complex numbers
+    """
+    alpha, argument = transform_coordinates(latitude, longitude)
+    dist = np.arctan(alpha)
+    return np.exp(1.j*argument)*dist
+
+
 class ClosedChain:
     """
     Class for representing polygons with chain specified by its nodes.
@@ -76,7 +101,7 @@ class ClosedChain:
             try:
                 results = winding_numbers[0]
             except IndexError:
-                    results = 0.
+                    results = 0
         return np.int32(results)
 
     def is_inside(self, *points):
@@ -90,91 +115,12 @@ class ClosedChain:
 
     def _in_box(self, z):
         """
-        Checks if point lays in range of values of the chain. Boosts up speed if winding number.
+        Checks if point lays in range of values of the chain. Boosts up speed of calculating winding number.
 
         :param z: complex number or np.array of complex numbers
-        :return: bool of np.array(dtype=bool)
+        :return: bool or np.array(dtype=bool)
         """
         real, imag = z.real, z.imag
         imag_range = np.logical_and(imag <= self.max_imag, imag >= self.min_imag)
         real_range = np.logical_and(real <= self.max_real, real >= self.min_real)
         return np.logical_and(imag_range, real_range)
-
-
-def transform_coordinates(latitude, longitude):
-    """
-    Transforms geographical coordinates to spherical coordinates in radians.
-
-    :param latitude: float
-    :param longitude: float
-    :return: float [0, pi/2), float (-pi, pi]
-    """
-    scale = np.pi/180.
-    return 0.5*(0.5*np.pi + latitude*scale), longitude*scale
-
-
-def coordinates_to_complex(latitude, longitude):
-    """
-    Maps geographical coordinates (all apart the north pole) to complex plane.
-
-    :param latitude: float
-    :param longitude: float
-    :return: complex or np.array of complex numbers
-    """
-    alpha, argument = transform_coordinates(latitude, longitude)
-    dist = np.arctan(alpha)
-    return np.exp(1.j*argument)*dist
-
-
-if __name__ == '__main__':
-    curve = [(1, 1), (2, 1), (2, 2), (1, 2)]
-
-    pt1 = (1.5, 1.5)
-    pt2 = (1.5, 1.99)
-    pt3 = (1.01, 1.01)
-    pt4 = (3, 3)
-    pt5 = (1.5, 2.01)
-    pt6 = (2.01, 2.01)
-
-    polygon = ClosedChain(*curve)
-
-    points = [eval('pt{}'.format(i)) for i in range(1, 7)]
-    points_array = np.array([complex(*p) for p in points], dtype=np.complex128)
-    complex_points = [complex(*eval('pt{}'.format(i))) for i in range(1, 7)]
-
-    tmp = polygon.is_inside(*points)
-    print(tmp)
-
-    tmp = polygon.is_inside(*complex_points)
-    print(tmp)
-
-    tmp = polygon.is_inside(points_array)
-    print(tmp)
-
-    tmp = polygon.is_inside(pt1)
-    print(tmp)
-
-    tmp = polygon.is_inside(complex(*pt1))
-    print(tmp)
-
-    tmp = polygon.is_inside(pt6)
-    print(tmp)
-
-    tmp = polygon.is_inside(complex(*pt6))
-    print(tmp)
-
-
-    # import matplotlib.pyplot as plt
-    #
-    # coords = [(10, 10), (10, 20), (50, 20), (50, 10)]
-    # points = np.array([coordinates_to_complex(*c) for c in coords])
-    # print(points)
-    # polygon = ClosedCurve(*points)
-    # pt = (15, 15)
-    # pt = coordinates_to_complex(*pt)
-    # res = polygon.is_inside(pt)
-    # print(res)
-    #
-    # plt.plot(points.real, points.imag, 'b+-')
-    # plt.plot([pt.real], [pt.imag], 'r+')
-    # plt.show()
